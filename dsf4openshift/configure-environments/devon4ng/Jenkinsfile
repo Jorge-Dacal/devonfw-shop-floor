@@ -72,11 +72,9 @@ pipeline{
                         withCredentials([usernamePassword(credentialsId: "${GIT_CREDENTIALS}", passwordVariable: 'pass', usernameVariable: 'user')]) {
                             def validPass = pass.replace('@', '%40')
                             def url = "${GIT_REPOSITORY}"
-                            echo "url: ${url}"
                             url = url.replace('http://', 'http://${user}:${validPass}@')
                             url = url.replace('https://', 'https://${user}:${validPass}@')
-                            echo "first set: ${url}"
-                            sh "git clone ${url} ."
+                            sh "git clone --single-branch --branch ${GIT_BRANCH} ${url} ."
                         }
                         sh "ls"
                         // git branch: "${GIT_BRANCH}", credentialsId: "${GIT_CREDENTIALS}", url: "${GIT_REPOSITORY}"
@@ -92,8 +90,10 @@ pipeline{
                 }
             }
             steps{
-                sh "yarn"
-                sh """yarn ${BUILD_SCRIPT}"""
+                dir('dsf') {
+                    sh "yarn"
+                    sh """yarn ${BUILD_SCRIPT}"""
+                }
             }
         }
 
@@ -105,12 +105,14 @@ pipeline{
             }
             steps{
                 script {
-                    props = readJSON file: 'package.json'
-                    withCredentials([usernamePassword(credentialsId: "${OPENSHIFT_CREDENTIALS}", passwordVariable: 'pass', usernameVariable: 'user')]) {
-                        sh "oc login -u ${user} -p ${pass} ${OPENSHIFT_URL} --insecure-skip-tls-verify"
-                        sh "oc project ${OPENSHIFT_NAMESPACE}"
-                        withCredentials([usernamePassword(credentialsId: "${DOCKER_REGISTRY_CREDENTIALS}", passwordVariable: 'drpass', usernameVariable: 'druser')]) {
-                            sh "oc create secret docker-registry ${nameForSecret}${REGISTRY_SECRET_NAME_SUFFIX} --docker-server=${DOCKER_REGISTRY} --docker-username=${druser} --docker-password=${drpass} --docker-email=no-reply@email.com"
+                    dir('dsf') {
+                        props = readJSON file: 'package.json'
+                        withCredentials([usernamePassword(credentialsId: "${OPENSHIFT_CREDENTIALS}", passwordVariable: 'pass', usernameVariable: 'user')]) {
+                            sh "oc login -u ${user} -p ${pass} ${OPENSHIFT_URL} --insecure-skip-tls-verify"
+                            sh "oc project ${OPENSHIFT_NAMESPACE}"
+                            withCredentials([usernamePassword(credentialsId: "${DOCKER_REGISTRY_CREDENTIALS}", passwordVariable: 'drpass', usernameVariable: 'druser')]) {
+                                sh "oc create secret docker-registry ${nameForSecret}${REGISTRY_SECRET_NAME_SUFFIX} --docker-server=${DOCKER_REGISTRY} --docker-username=${druser} --docker-password=${drpass} --docker-email=no-reply@email.com"
+                            }
                         }
                     }
                 }
@@ -125,15 +127,17 @@ pipeline{
             }
             steps{
                 script {
-                    props = readJSON file: 'package.json'
-                    withCredentials([usernamePassword(credentialsId: "${OPENSHIFT_CREDENTIALS}", passwordVariable: 'pass', usernameVariable: 'user')]) {
-                        sh "oc login -u ${user} -p ${pass} ${OPENSHIFT_URL} --insecure-skip-tls-verify"
-                        sh "oc project ${OPENSHIFT_NAMESPACE}"
-                        sh """
-                            oc new-build --strategy docker --binary --docker-image nginx:alpine-perl --name=${props.name}${APP_NAME_SUFFIX} --to=${DOCKER_REGISTRY}/${props.name}:${DOCKER_TAG} --to-docker=true
-                            oc patch bc/${props.name}${APP_NAME_SUFFIX} --patch '{"spec":{"resources":{"limits":{"memory": "400Mi"},"requests":{"memory": "400Mi"}}}}'
-                            oc set build-secret --push bc/${props.name}${APP_NAME_SUFFIX} ${nameForSecret}${REGISTRY_SECRET_NAME_SUFFIX}
-                        """
+                    dir('dsf') {
+                        props = readJSON file: 'package.json'
+                        withCredentials([usernamePassword(credentialsId: "${OPENSHIFT_CREDENTIALS}", passwordVariable: 'pass', usernameVariable: 'user')]) {
+                            sh "oc login -u ${user} -p ${pass} ${OPENSHIFT_URL} --insecure-skip-tls-verify"
+                            sh "oc project ${OPENSHIFT_NAMESPACE}"
+                            sh """
+                                oc new-build --strategy docker --binary --docker-image nginx:alpine-perl --name=${props.name}${APP_NAME_SUFFIX} --to=${DOCKER_REGISTRY}/${props.name}:${DOCKER_TAG} --to-docker=true
+                                oc patch bc/${props.name}${APP_NAME_SUFFIX} --patch '{"spec":{"resources":{"limits":{"memory": "400Mi"},"requests":{"memory": "400Mi"}}}}'
+                                oc set build-secret --push bc/${props.name}${APP_NAME_SUFFIX} ${nameForSecret}${REGISTRY_SECRET_NAME_SUFFIX}
+                            """
+                        }
                     }
                 }
             }
@@ -148,11 +152,13 @@ pipeline{
             }
             steps{
                 script {
-                    props = readJSON file: 'package.json'
-                    withCredentials([usernamePassword(credentialsId: "${OPENSHIFT_CREDENTIALS}", passwordVariable: 'pass', usernameVariable: 'user')]) {
-                        sh "oc login -u ${user} -p ${pass} ${OPENSHIFT_URL} --insecure-skip-tls-verify"
-                        sh "oc project ${OPENSHIFT_NAMESPACE}"
-                        sh "oc start-build ${props.name}${APP_NAME_SUFFIX} --from-dir=${artifactsPath} --follow"
+                    dir('dsf') {
+                        props = readJSON file: 'package.json'
+                        withCredentials([usernamePassword(credentialsId: "${OPENSHIFT_CREDENTIALS}", passwordVariable: 'pass', usernameVariable: 'user')]) {
+                            sh "oc login -u ${user} -p ${pass} ${OPENSHIFT_URL} --insecure-skip-tls-verify"
+                            sh "oc project ${OPENSHIFT_NAMESPACE}"
+                            sh "oc start-build ${props.name}${APP_NAME_SUFFIX} --from-dir=${artifactsPath} --follow"
+                        }
                     }
                 }
             }
@@ -161,11 +167,13 @@ pipeline{
         stage('Create New App') {
             steps{
                 script {
-                    props = readJSON file: 'package.json'
-                    withCredentials([usernamePassword(credentialsId: "${OPENSHIFT_CREDENTIALS}", passwordVariable: 'pass', usernameVariable: 'user')]) {
-                        sh "oc login -u ${user} -p ${pass} ${OPENSHIFT_URL} --insecure-skip-tls-verify"
-                        sh "oc project ${OPENSHIFT_NAMESPACE}"
-                        sh "oc new-app --docker-image=${DOCKER_REGISTRY}/${props.name}:${DOCKER_TAG} --name=${props.name}${APP_NAME_SUFFIX} --source-secret=${nameForSecret}${REGISTRY_SECRET_NAME_SUFFIX}"
+                    dir('dsf') {
+                        props = readJSON file: 'package.json'
+                        withCredentials([usernamePassword(credentialsId: "${OPENSHIFT_CREDENTIALS}", passwordVariable: 'pass', usernameVariable: 'user')]) {
+                            sh "oc login -u ${user} -p ${pass} ${OPENSHIFT_URL} --insecure-skip-tls-verify"
+                            sh "oc project ${OPENSHIFT_NAMESPACE}"
+                            sh "oc new-app --docker-image=${DOCKER_REGISTRY}/${props.name}:${DOCKER_TAG} --name=${props.name}${APP_NAME_SUFFIX} --source-secret=${nameForSecret}${REGISTRY_SECRET_NAME_SUFFIX}"
+                        }
                     }
                 }
             }
@@ -173,26 +181,28 @@ pipeline{
         stage('Create Routes') {
             steps{
                 script {
-                    props = readJSON file: 'package.json'
-                    withCredentials([usernamePassword(credentialsId: "${OPENSHIFT_CREDENTIALS}", passwordVariable: 'pass', usernameVariable: 'user')]) {
-                        sh "oc login -u ${user} -p ${pass} ${OPENSHIFT_URL} --insecure-skip-tls-verify"
-                        sh "oc project ${OPENSHIFT_NAMESPACE}"
-                        sh "echo SECURED PROTOCOL: ${SECURED_PROTOCOL}"
-                        if (params.SECURED_PROTOCOL) {
-                            if ("${HOSTNAME}" != '') {
-                                sh "echo HOSTNAME: ${HOSTNAME}"
-                                sh "oc create route edge --service=${props.name}${APP_NAME_SUFFIX} --port=${port} --hostname=${HOSTNAME}"
+                    dir('dsf') {
+                        props = readJSON file: 'package.json'
+                        withCredentials([usernamePassword(credentialsId: "${OPENSHIFT_CREDENTIALS}", passwordVariable: 'pass', usernameVariable: 'user')]) {
+                            sh "oc login -u ${user} -p ${pass} ${OPENSHIFT_URL} --insecure-skip-tls-verify"
+                            sh "oc project ${OPENSHIFT_NAMESPACE}"
+                            sh "echo SECURED PROTOCOL: ${SECURED_PROTOCOL}"
+                            if (params.SECURED_PROTOCOL) {
+                                if ("${HOSTNAME}" != '') {
+                                    sh "echo HOSTNAME: ${HOSTNAME}"
+                                    sh "oc create route edge --service=${props.name}${APP_NAME_SUFFIX} --port=${port} --hostname=${HOSTNAME}"
+                                } else {
+                                    sh "echo HOSTNAME esta vacio"
+                                    sh "oc create route edge --service=${props.name}${APP_NAME_SUFFIX} --port=${port}"
+                                }
                             } else {
-                                sh "echo HOSTNAME esta vacio"
-                                sh "oc create route edge --service=${props.name}${APP_NAME_SUFFIX} --port=${port}"
-                            }
-                        } else {
-                            if ("${HOSTNAME}" != '') {
-                                sh "echo HOSTNAME: ${HOSTNAME}"
-                                sh "oc expose svc/${props.name}${APP_NAME_SUFFIX} --port=${port} --hostname=${HOSTNAME}"
-                            } else {
-                                sh "echo HOSTNAME esta vacio"
-                                sh "oc expose svc/${props.name}${APP_NAME_SUFFIX} --port=${port}"
+                                if ("${HOSTNAME}" != '') {
+                                    sh "echo HOSTNAME: ${HOSTNAME}"
+                                    sh "oc expose svc/${props.name}${APP_NAME_SUFFIX} --port=${port} --hostname=${HOSTNAME}"
+                                } else {
+                                    sh "echo HOSTNAME esta vacio"
+                                    sh "oc expose svc/${props.name}${APP_NAME_SUFFIX} --port=${port}"
+                                }
                             }
                         }
                     }
