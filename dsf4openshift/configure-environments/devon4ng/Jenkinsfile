@@ -66,8 +66,9 @@ pipeline{
         stage('Download app repository') {
             steps{
                 dir('devonfw') {
-                    echo "git branch: '${GIT_BRANCH}', credentialsId: '${GIT_CREDENTIALS}', url: '${GIT_REPOSITORY}'"
-                    git branch: '${GIT_BRANCH}', credentialsId: '${GIT_CREDENTIALS}', url: '${GIT_REPOSITORY}'
+                    sh "pwd"
+                    sh "ls"
+                    git branch: "${GIT_BRANCH}", credentialsId: "${GIT_CREDENTIALS}", url: "${GIT_REPOSITORY}"
                 }
             }
         }
