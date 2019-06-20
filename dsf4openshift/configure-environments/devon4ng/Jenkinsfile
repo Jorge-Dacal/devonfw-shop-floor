@@ -68,7 +68,11 @@ pipeline{
                 dir('devonfw') {
                     sh "pwd"
                     sh "ls"
-                    git branch: "${GIT_BRANCH}", credentialsId: "${GIT_CREDENTIALS}", url: "${GIT_REPOSITORY}"
+                    withCredentials([usernamePassword(credentialsId: "${GIT_CREDENTIALS}", passwordVariable: 'pass', usernameVariable: 'user')]) {
+                        sh "git clone ${GIT_REPOSITORY} -u ${user} -p ${pass}"
+                    }
+                    sh "ls"
+                    // git branch: "${GIT_BRANCH}", credentialsId: "${GIT_CREDENTIALS}", url: "${GIT_REPOSITORY}"
                 }
             }
         }
