@@ -74,7 +74,7 @@ pipeline{
                             def url = "${GIT_REPOSITORY}"
                             url = url.replace('http://', 'http://${user}:${validPass}@')
                             url = url.replace('https://', 'https://${user}:${validPass}@')
-                            sh "git clone --single-branch --branch params.GIT_BRANCH ${url} ."
+                            sh "git clone --single-branch --branch ${params.GIT_BRANCH} ${url} ."
                         }
                         sh "ls"
                         // git branch: "${GIT_BRANCH}", credentialsId: "${GIT_CREDENTIALS}", url: "${GIT_REPOSITORY}"
