@@ -62,7 +62,7 @@ pipeline{
         }
         stage('Download app repository') {
             steps{
-                git branch: "${GIT_BRANCH}", credentialsId: "${GIT_CREDENTIALS}", url: "${GIT_REPOSITORY}"
+                git branch: "${params.GIT_BRANCH}", credentialsId: "${params.GIT_CREDENTIALS}", url: "${params.GIT_REPOSITORY}"
             }
         }
 
