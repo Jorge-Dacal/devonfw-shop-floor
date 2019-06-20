@@ -70,7 +70,7 @@ pipeline{
                     sh "ls"
                     withCredentials([usernamePassword(credentialsId: "${GIT_CREDENTIALS}", passwordVariable: 'pass', usernameVariable: 'user')]) {
                         sh """
-                            url = ${GIT_REPOSITORY}.replace("http:\\", "http:\\${user}:${pass}")
+                            def url = ${GIT_REPOSITORY}.replace("http:\\", "http:\\${user}:${pass}")
                             echo url
                             url = ${url}.replace("https:\\", "https:\\${user}:${pass}")
                             echo url
