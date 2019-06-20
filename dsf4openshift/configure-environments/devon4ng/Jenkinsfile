@@ -65,20 +65,22 @@ pipeline{
         }
         stage('Download app repository') {
             steps{
-                dir('devonfw') {
-                    sh "pwd"
-                    sh "ls"
-                    withCredentials([usernamePassword(credentialsId: "${GIT_CREDENTIALS}", passwordVariable: 'pass', usernameVariable: 'user')]) {
-                        sh """
-                            def url = ${GIT_REPOSITORY}.replace("http:\\", "http:\\${user}:${pass}")
-                            echo url
-                            url = ${url}.replace("https:\\", "https:\\${user}:${pass}")
-                            echo url
-                            git clone ${url}
-                        """
+                dir('dsf') {
+                    script{
+                        sh "pwd"
+                        sh "ls"
+                        withCredentials([usernamePassword(credentialsId: "${GIT_CREDENTIALS}", passwordVariable: 'pass', usernameVariable: 'user')]) {
+                            def validPass = pass.replace('@', '%40')
+                            def url = "${GIT_REPOSITORY}"
+                            echo "url: ${url}"
+                            url = url.replace('http://', 'http://${user}:${validPass}@')
+                            url = url.replace('https://', 'https://${user}:${validPass}@')
+                            echo "first set: ${url}"
+                            sh "git clone ${url} ."
+                        }
+                        sh "ls"
+                        // git branch: "${GIT_BRANCH}", credentialsId: "${GIT_CREDENTIALS}", url: "${GIT_REPOSITORY}"
                     }
-                    sh "ls"
-                    // git branch: "${GIT_BRANCH}", credentialsId: "${GIT_CREDENTIALS}", url: "${GIT_REPOSITORY}"
                 }
             }
         }
